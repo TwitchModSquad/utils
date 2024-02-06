@@ -1,0 +1,23 @@
+{
+  "name": "tms-utils",
+  "version": "3.0.0",
+  "description": "Utility operations for all TMS applications.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TwitchModSquad/utils.git"
+  },
+  "author": "Twijn",
+  "license": "SEE LICENSE IN LICENSE",
+  "bugs": {
+    "url": "https://github.com/TwitchModSquad/utils/issues"
+  },
+  "homepage": "https://github.com/TwitchModSquad/utils#readme",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "mongoose": "^8.1.1"
+  }
+}
