@@ -1,58 +1,15 @@
 const mongoose = require("mongoose");
+const { StringSelectMenuBuilder } = require("discord.js");
 const {createLogger, Logger, format, transports} = require("winston");
 
-const Twitch = require("./twitch/");
-const Discord = require("./discord/");
-const Points = require("./points/");
-
 const Authentication = require("./authentication/");
-
-const StatsManager = require("./StatsManager");
-const Flag = require("./flag/Flag");
-
-const Archive = require("./archive/Archive");
-const ArchiveFile = require("./archive/ArchiveFile");
-const ArchiveLog = require("./archive/ArchiveLog");
-const ArchiveMessage = require("./archive/ArchiveMessage");
-const ArchiveUser = require("./archive/ArchiveUser");
-
-const DiscordBan = require("./discord/DiscordBan");
-const DiscordGuild = require("./discord/DiscordGuild");
-const DiscordUser = require("./discord/DiscordUser");
-const DiscordMessage = require("./discord/DiscordMessage");
-const DiscordToken = require("./discord/DiscordToken");
-
-const Giveaway = require("./giveaway/Giveaway");
-const GiveawayEntry = require("./giveaway/GiveawayEntry");
-
-const Group = require("./group/Group");
-const GroupUser = require("./group/GroupUser");
-
-const HourlyStat = require("./stats/HourlyStat");
-
-const PointLog = require("./points/PointLog");
-
-const Stream = require("./twitch/TwitchStream");
-const TwitchBan = require("./twitch/TwitchBan");
-const TwitchUser = require("./twitch/TwitchUser");
-const TwitchUserChat = require("./twitch/TwitchUserChat");
-const TwitchChat = require("./twitch/TwitchChat");
-const TwitchTimeout = require("./twitch/TwitchTimeout");
-const TwitchRole = require("./twitch/TwitchRole");
-const TwitchToken = require("./twitch/TwitchToken");
-
-const UserFlag = require("./flag/UserFlag");
-
-const Identity = require("./Identity");
-const Session = require("./Session");
-const { StringSelectMenuBuilder } = require("discord.js");
-
-const SessionStore = require("./SessionStore");
+const Managers = require("./managers/");
+const Schemas = require("./schemas/");
 
 class Utils {
 
     /**
-     * Logger for TMS
+     * Logger for TMS utils
      * @type {Logger}
      */
     logger = createLogger({
@@ -72,15 +29,16 @@ class Utils {
      */
     config;
 
-    #registerServices(utils) {
-        this.logger.log("info","Registering services...");
-        this.Twitch = new Twitch(utils);
-        this.Authentication = new Authentication(utils, this.Twitch.Helix);
-        this.Discord = new Discord(utils);
-        this.Points = new Points(utils);
-        this.StatsManager = new StatsManager(utils);
-        this.SessionStore = new SessionStore(utils);
-        this.logger.log("info","Services registered!");
+    #registerSchemas(utils) {
+        this.logger.log("info","Registering schemas...");
+        this.Schemas = new Schemas(utils);
+        this.logger.log("info","Schemas registered!");
+    }
+
+    #registerManagers(utils) {
+        this.logger.log("info","Registering managers...");
+        this.Managers = new Managers(utils);
+        this.logger.log("info","Managers registered!");
     }
 
     /**
@@ -100,7 +58,8 @@ class Utils {
         this.#schema().catch(err => {
             this.logger.log("error", err);
         });
-        this.#registerServices(this);
+        this.#registerSchemas(this);
+        this.#registerManagers(this);
     }
 
     /**
@@ -110,68 +69,14 @@ class Utils {
     Authentication;
 
     /**
-     * Global API for Twitch objects
-     * @type {Twitch}
+     * @type {Schemas}
      */
-    Twitch;
+    Schemas;
 
     /**
-     * Global API for Discord objects
-     * @type {Discord}
+     * @type {Managers}
      */
-    Discord;
-
-    /**
-     * Global API for Points
-     * @type {Points}
-     */
-    Points;
-
-    /**
-     * Global API for stats
-     * @type {StatsManager}
-     */
-    StatsManager;
-
-    /**
-     * Session store
-     * @type {SessionStore}
-     */
-    SessionStore;
-
-    Schemas = {
-        Flag: Flag,
-        Identity: Identity,
-        Archive: Archive,
-        ArchiveFile: ArchiveFile,
-        ArchiveLog: ArchiveLog,
-        ArchiveMessage: ArchiveMessage,
-        ArchiveUser: ArchiveUser,
-        DiscordBan: DiscordBan,
-        DiscordGuild: DiscordGuild,
-        DiscordUser: DiscordUser,
-        DiscordMessage: DiscordMessage,
-        DiscordToken: DiscordToken,
-        Giveaway: Giveaway,
-        GiveawayEntry: GiveawayEntry,
-        Group: Group,
-        GroupUser: GroupUser,
-        HourlyStat: HourlyStat,
-        PointLog: PointLog,
-        TwitchBan: TwitchBan,
-        TwitchChat: TwitchChat,
-        TwitchUserChat: TwitchUserChat,
-        TwitchGame: Stream.TwitchGame,
-        TwitchLivestream: Stream.TwitchLivestream,
-        TwitchStreamStatus: Stream.TwitchStreamStatus,
-        TwitchTag: Stream.TwitchTag,
-        TwitchTimeout: TwitchTimeout,
-        TwitchUser: TwitchUser,
-        TwitchRole: TwitchRole,
-        TwitchToken: TwitchToken,
-        UserFlag: UserFlag,
-        Session: Session,
-    }
+    Managers;
 
     /**TODO: Create transaction
      * Automatically creates or consolidates identities of all given Discord and Twitch users
