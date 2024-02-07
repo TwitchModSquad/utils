@@ -49,5 +49,5 @@ module.exports = function(utils) {
         return `${utils.comma(this.points)} point${this.points === 1 ? "" : "s"}`;
     }
     
-    module.exports = mongoose.model("Identity", identitySchema);
+    return mongoose.model("Identity", identitySchema);
 }

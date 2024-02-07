@@ -24,5 +24,5 @@ module.exports = function(utils) {
         }
     });
     
-    module.exports = mongoose.model("ArchiveUser", schema);
+    return mongoose.model("ArchiveUser", schema);
 }

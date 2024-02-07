@@ -33,5 +33,5 @@ module.exports = function(utils) {
         }
     });
     
-    module.exports = mongoose.model("UserFlag", userFlagSchema);
+    return mongoose.model("UserFlag", userFlagSchema);
 }

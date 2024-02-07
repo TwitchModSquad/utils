@@ -475,5 +475,5 @@ module.exports = function(utils) {
         });
     }
     
-    module.exports = mongoose.model("TwitchUser", schema);
+    return mongoose.model("TwitchUser", schema);
 }

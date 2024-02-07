@@ -112,5 +112,5 @@ module.exports = function(utils) {
         message.edit({embeds: [await this.embed()]}).catch(console.error);
     }
     
-    module.exports = mongoose.model("Group", schema);
+    return mongoose.model("Group", schema);
 }
