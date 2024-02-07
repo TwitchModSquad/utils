@@ -3,8 +3,6 @@ const mongoose = require("mongoose");
 
 const GiveawayEntry = require("./GiveawayEntry");
 
-const config = require("../../config.json");
-
 const schema = new mongoose.Schema({
     name: {
         type: String,
@@ -73,7 +71,7 @@ schema.methods.embed = function() {
             value: `${this.discordEndTime("f")}\n${this.discordEndTime("R")}`,
             inline: true,
         })
-        .setFooter({iconURL: config.iconURI, text: "The Mod Squad"});
+        .setFooter({iconURL: process.env.ICON_URI, text: "The Mod Squad"});
 }
 
 schema.methods.discordStartTime = function(format) {

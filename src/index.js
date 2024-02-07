@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-
-const config = require("../config.json");
+const {createLogger, Logger, format, transports} = require("winston");
 
 const Twitch = require("./twitch/");
 const Discord = require("./discord/");
@@ -8,7 +7,6 @@ const Points = require("./points/");
 
 const Authentication = require("./authentication/");
 
-const EventManager = require("./EventManager");
 const StatsManager = require("./StatsManager");
 const Flag = require("./flag/Flag");
 
@@ -54,46 +52,92 @@ const SessionStore = require("./SessionStore");
 class Utils {
 
     /**
+     * Logger for TMS
+     * @type {Logger}
+     */
+    logger = createLogger({
+        level: "info",
+        transports: [
+            new transports.Console({
+                format: format.combine(
+                    format.colorize(),
+                    format.simple()
+                )
+            })
+        ]
+    });
+
+    /**
+     * Holds configuration options for TMS
+     */
+    config;
+
+    #registerServices(utils) {
+        this.logger.log("info","Registering services...");
+        this.Twitch = new Twitch(utils);
+        this.Authentication = new Authentication(utils, this.Twitch.Helix);
+        this.Discord = new Discord(utils);
+        this.Points = new Points(utils);
+        this.StatsManager = new StatsManager(utils);
+        this.SessionStore = new SessionStore(utils);
+        this.logger.log("info","Services registered!");
+    }
+
+    /**
+     * Initializes schema for all Utils objects
+     */
+    async #schema() {
+        this.logger.log("info", "Connecting to MongoDB...");
+        await mongoose.connect(process.env.MDB_URL);
+        this.logger.log("info", "Connected to MongoDB!");
+    }
+
+    /**
+     * 
+     * @param {{config: object}} opts 
+     */
+    constructor(opts) {
+        this.#schema().catch(err => {
+            this.logger.log("error", err);
+        });
+        this.#registerServices(this);
+    }
+
+    /**
      * Holds Authentication methods for Twitch & Discord
      * @type {Authentication}
      */
-    Authentication = new Authentication();
+    Authentication;
 
     /**
      * Global API for Twitch objects
      * @type {Twitch}
      */
-    Twitch = new Twitch();
+    Twitch;
 
     /**
      * Global API for Discord objects
      * @type {Discord}
      */
-    Discord = new Discord();
+    Discord;
 
     /**
      * Global API for Points
      * @type {Points}
      */
-    Points = new Points();
-
-    /**
-     * Global API for events
-     * @type {EventManager}
-     */
-    EventManager = new EventManager();
+    Points;
 
     /**
      * Global API for stats
      * @type {StatsManager}
      */
-    StatsManager = new StatsManager();
+    StatsManager;
 
     /**
      * Session store
      * @type {SessionStore}
      */
-    SessionStore = new SessionStore();
+    SessionStore;
 
     Schemas = {
         Flag: Flag,
@@ -466,7 +510,7 @@ class Utils {
                         try {
                             channels[msg.channel] = await global.client.mbm.channels.fetch(msg.channel);
                         } catch(err) {
-                            console.error(`Unable to find channel ${msg.channel}`);
+                            this.logger.log("error", `Unable to find channel ${msg.channel}`);
                             continue;
                         }
                     }
@@ -493,10 +537,10 @@ class Utils {
                             });
                         }
 
-                        message.edit({embeds: [embed], components: message.components}).catch(console.error);
+                        message.edit({embeds: [embed], components: message.components}).catch(err => this.logger.log("error", err));
                     } catch(err) {
-                        console.error(err);
-                        console.error(`Unable to find message ${msg._id}`);
+                        this.logger.log("error", err);
+                        this.logger.log("error", `Unable to find message ${msg._id}`);
                         continue;
                     }
                 }
@@ -514,16 +558,6 @@ class Utils {
         return str.replace(/[.*+?^${}()|[\]\\]/g, "");
     }
 
-    /**
-     * Initializes schema for all Utils objects
-     */
-    async schema() {
-        console.log("Connecting to MongoDB...");
-        await mongoose.connect(config.mongodb.url);
-        console.log("Connected to MongoDB!");
-
-        this.EventManager.populate();
-    }
 }
 
-module.exports = new Utils();
+module.exports = Utils;

@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 const { EmbedBuilder, codeBlock, cleanCodeBlockContent, StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
-const config = require("../../config.json");
-
+//TODO:FIX
 const archiveSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
@@ -35,11 +33,32 @@ archiveSchema.pre("save", async function() {
         await global.utils.Schemas.ArchiveLog.create({entry: this._id, created: true});
         setTimeout(async () => {
             const embed = await this.embed();
-            const channel = await global.client.modbot.channels.fetch(config.discord.modbot.channels.archive_sort);
+            const channel = await global.client.modbot.channels.fetch(process.env.DISCORD_ARCHIVE_SORT);
             const selectMenu = new StringSelectMenuBuilder()
                     .setCustomId("archive-sort")
                     .setPlaceholder("Sort Archive Entry")
-                    .setOptions(config.discord.modbot.channels.archive_sort_targets);
+                    .setOptions([
+                        {
+                            label: "Serious Bans",
+                            value: process.env.DISCORD_CHANNEL_ARCHIVE_SERIOUS,
+                            description: "For users that should likely be prebanned (pedophelia, etc)",
+                        },
+                        {
+                            label: "Normal Bans",
+                            value: process.env.DISCORD_CHANNEL_ARCHIVE_NORMAL,
+                            description: "For users that may require banning if they're present"
+                        },
+                        {
+                            label: "Spam Bans",
+                            value: process.env.DISCORD_CHANNEL_ARCHIVE_SPAM,
+                            description: "For users that are confirmed to be spam, hijacked, or throwaway accounts"
+                        },
+                        {
+                            label: "Minor Bans",
+                            value: process.env.DISCORD_CHANNEL_ARCHIVE_MINOR,
+                            description: "For users where prebanning isn't required, but the user should be strictly watched"
+                        }
+                    ]);
             
             channel.send({embeds: [embed], components: [new ActionRowBuilder().setComponents(selectMenu)]}).then(async message => {
                 await global.utils.Schemas.ArchiveMessage.create({
@@ -78,7 +97,7 @@ archiveSchema.methods.embed = async function() {
     const archiveFiles = await this.getFiles();
     const archiveUsers = await this.getUsers();
 
-    const url = `${config.express.domain.root}panel/archive/${String(this._id)}`;
+    const url = `${process.env.DOMAIN_ROOT}panel/archive/${String(this._id)}`;
 
     const embed = new EmbedBuilder()
         .setTitle("Archive Entry")
@@ -97,7 +116,7 @@ archiveSchema.methods.embed = async function() {
                 inline: false,
             },
         ])
-        .setFooter({text: `ID: ${this._id}`, iconURL: config.iconURI});
+        .setFooter({text: `ID: ${this._id}`, iconURL: process.env.ICON_URI});
 
     if (archiveUsers.length > 0) {
         let twitchString = "";
@@ -128,7 +147,7 @@ archiveSchema.methods.embed = async function() {
 
         archiveFiles.forEach(file => {
             if (file?.image?.data) {
-                fileString += `\n[${file.label}](${config.express.domain.root}panel/archive/image/${file._id})`;
+                fileString += `\n[${file.label}](${process.env.DOMAIN_ROOT}panel/archive/image/${file._id})`;
             } else if (file?.remote) {
                 fileString += `\n[${file.label}](${file.remote})`;
             }

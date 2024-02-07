@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-const config = require("../../config.json");
 const { EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, codeBlock, cleanCodeBlockContent } = require("discord.js");
 
 const banSchema = new mongoose.Schema({
@@ -155,7 +154,7 @@ banSchema.methods.message = async function(showButtons = false, getData = false,
 
     const elapsedTime = Date.now() - startTime;
 
-    embed.setFooter({text: `${bpm ? `Bans per Minute: ${bpm} • ` : ""}Generated in ${elapsedTime} ms`, iconURL: config.iconURI});
+    embed.setFooter({text: `${bpm ? `Bans per Minute: ${bpm} • ` : ""}Generated in ${elapsedTime} ms`, iconURL: process.env.DOMAIN_ROOT});
 
     if (showButtons) {
         components.push(

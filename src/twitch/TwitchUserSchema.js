@@ -6,8 +6,6 @@ const TwitchRole = require("./TwitchRole");
 const TwitchBan = require("./TwitchBan");
 const TwitchTimeout = require("./TwitchTimeout");
 
-const config = require("../../config.json");
-const con = require("../../old-db");
 const { EmbedBuilder, codeBlock, cleanCodeBlockContent, StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const TwitchChat = require('./TwitchChat');
 const UserFlag = require('../flag/UserFlag');
@@ -100,7 +98,7 @@ userSchema.methods.embed = async function(bans = null, communities = null) {
                 `${codeBlock(this._id)}` +
                 `**Name:** ${this.display_name}\n` +
                 (this.follower_count ? `**Followers:** ${global.utils.comma(this.follower_count)}\n` : "") +
-                `[Profile](https://twitch.tv/${this.login}) | [TMS User Log](${config.express.domain.root}panel/user/${this._id})` +
+                `[Profile](https://twitch.tv/${this.login}) | [TMS User Log](${process.env.DOMAIN_ROOT}panel/user/${this._id})` +
                 (this.description !== "" ? `\n**Description**${codeBlock(cleanCodeBlockContent(this.description))}` : "")
             );
 
@@ -144,7 +142,7 @@ userSchema.methods.embed = async function(bans = null, communities = null) {
             const ban = bans[i];
             if (banString !== "") banString += "\n";
             if (ban.message) {
-                banString += `[${ban.streamer.display_name} on ${ban.time_start.toLocaleDateString()}](https://discord.com/channels/${config.discord.guilds.modsquad}/${config.discord.channels.ban.tms}/${ban.message._id})`
+                banString += `[${ban.streamer.display_name} on ${ban.time_start.toLocaleDateString()}](https://discord.com/channels/${process.env.DISCORD_GUILD_TMS}/${process.env.DISCORD_CHANNEL_BAN_TMS}/${ban.message._id})`
             } else {
                 banString += `${ban.streamer.display_name} on ${ban.time_start.toLocaleDateString()}`;
             }
@@ -350,50 +348,7 @@ userSchema.methods.generateCommunityTable = async function(allChannelHistory = n
 }
 
 userSchema.methods.fetchMods = async function() {
-    const results = await fetch(config.twitch.gql.uri, {
-        method: "POST",
-        body: config.twitch.gql.getmods_body.replace("::login", this.login),
-        headers: {
-            'Client-Id': config.twitch.gql.client_id,
-        },
-    });
-
-    const json = await results.json();
-    if (json) {
-        if (results.status === 200) {
-            try {
-                const edges = json[0].data.user.mods.edges;
-                let mods = [];
-                await TwitchRole.updateMany({streamer: this}, {time_end: Date.now()});
-                for (let i = 0; i < edges.length; i++) {
-                    try {
-                        const user = await global.utils.Twitch.getUserById(edges[i].node.id, false, true);
-                        const currentRecord = await TwitchRole.findOne({streamer: this, moderator: user})
-                                .populate("streamer")
-                                .populate("moderator");
-                        if (currentRecord) {
-                            currentRecord.time_end = null;
-                            await currentRecord.save();
-                            mods.push(currentRecord);
-                        } else {
-                            mods.push(await TwitchRole.create({streamer: this, moderator: user, source: "gql"}));
-                        }
-                    } catch(e) {
-                        console.error(e);
-                    }
-                }
-                return mods;
-            } catch(e) {
-                console.error(e);
-                console.error(json);
-                throw "Received invalid Json response";
-            }
-        } else {
-            throw `Received error: ${json.hasOwnProperty("message") ? json.message : results.status}`
-        }
-    } else {
-        throw "Json not returned in response";
-    }
+    throw "This is deprecated. Why are you using it?";
 }
 
 userSchema.methods.fetchModdedChannels = async function(accessToken) {

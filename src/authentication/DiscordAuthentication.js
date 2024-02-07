@@ -1,12 +1,20 @@
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const config = require("../../config.json");
 
 const SCOPES = "guilds.join identify";
 
 class DiscordAuthentication {
 
-    DISCORD_URL = `https://discord.com/api/oauth2/authorize?client_id=${config.discord.auth.client_id}&redirect_uri={redirectURI}&response_type=code&scope={scope}`;
-    DISCORD_REDIRECT = config.express.domain.root + "auth/discord";
+    DISCORD_URL;
+    DISCORD_REDIRECT;
+
+    utils;
+
+    constructor(utils) {
+        this.utils = utils;
+        
+        this.DISCORD_URL = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_AUTH_CLIENTID}&redirect_uri={redirectURI}&response_type=code&scope={scope}`;
+        this.DISCORD_REDIRECT = process.env.DOMAIN_ROOT + "auth/discord";
+    }
 
     /**
      * Returns the OAuth2 URI given the scopes & redirect URI
@@ -30,8 +38,8 @@ class DiscordAuthentication {
         const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             body: new URLSearchParams({
-                client_id: config.discord.auth.client_id,
-                client_secret: config.discord.auth.secret_id,
+                client_id: process.env.DISCORD_AUTH_CLIENTID,
+                client_secret: process.env.DISCORD_AUTH_SECRETID,
                 code,
                 grant_type: 'authorization_code',
                 redirect_uri: redirectURI,
@@ -65,8 +73,8 @@ class DiscordAuthentication {
             const oauthResult = await fetch("https://discord.com/api/oauth2/token", {
                 method: 'POST',
                 body: new URLSearchParams({
-                    client_id: config.discord.auth.client_id,
-                    client_secret: config.discord.auth.secret_id,
+                    client_id: process.env.DISCORD_AUTH_CLIENTID,
+                    client_secret: process.env.DISCORD_AUTH_SECRETID,
                     refresh_token: refresh_token,
                     grant_type: "refresh_token",
                 }),
@@ -76,7 +84,7 @@ class DiscordAuthentication {
                 if (oauthData?.access_token) {
                     resolve(oauthData);
                 } else {
-                    console.error(oauthData);
+                    this.utils.logger.log("error", oauthData);
 
                     reject("Unable to request access token, reason: " + oauthData?.message);
                 }

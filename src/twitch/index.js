@@ -1,16 +1,57 @@
-const config = require("../../config.json");
-
 const Cache = require("../Cache/Cache");
 
 const TwitchUser = require("./TwitchUser");
 
-const {ApiClient} = require("twitch");
-const {ClientCredentialsAuthProvider} = require("twitch-auth");
+const {ApiClient} = require("@twurple/api");
+const {RefreshingAuthProvider} = require("@twurple/auth");
 
-const authProvider = new ClientCredentialsAuthProvider(config.twitch.client_id, config.twitch.client_secret);
+const authProvider = new RefreshingAuthProvider({
+    clientId: process.env.TWITCH_BOT_CLIENTID,
+    clientSecret: process.env.TWITCH_BOT_CLIENTSECRET,
+    redirectUri: process.env.DOMAIN_ROOT + "auth/twitch",
+});
 const api = new ApiClient({ authProvider });
 
 class Twitch {
+
+    utils;
+
+    constructor(utils) {
+        this.utils = utils;
+
+        authProvider.onRefresh(async (userId, tokenData) => {
+            this.utils.logger.log("info", "Refreshing token for " + userId);
+            await this.utils.Schemas.TwitchToken.findOneAndUpdate({
+                user: userId,
+            }, {
+                tokenData,
+            }, {
+                upsert: true,
+                new: true,
+            });
+        });
+
+        (async () => {
+            const tokens = await this.utils.Schemas.TwitchToken.find({});
+        
+            for (let i = 0; i < tokens.length; i++) {
+                const token = tokens[i];
+                authProvider.addUser(token.user, token.tokenData);
+            }
+        
+            console.log(`Added ${tokens.length} pre-existing tokens`);
+            
+            authProvider.addIntentsToUser(process.env.TWITCH_BOT_ID, ["chat"]);
+        })();
+
+        setInterval(async () => {
+            try {
+                await this.getUserByIdTick()
+            } catch(e) {
+                this.utils.logger.log("error", e);
+            }
+        }, 500);
+    }
 
     /**
      * Twitch Helix API
@@ -79,7 +120,7 @@ class Twitch {
     
                 this.forceCache = this.forceCache.filter(x => x.id !== user.id);
             } catch(e) {
-                console.error(e);
+                this.utils.logger.log("error", e);
             }
         }
         
@@ -209,16 +250,6 @@ class Twitch {
                 reject(e);
             }
         });
-    }
-
-    constructor() {
-        setInterval(async () => {
-            try {
-                await this.getUserByIdTick()
-            } catch(e) {
-                console.error(e);
-            }
-        }, 500);
     }
 
 }

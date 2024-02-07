@@ -1,6 +1,5 @@
 const PointLog = require("./PointLog");
 
-const config = require("../../config.json");
 const { Message } = require("discord.js");
 
 const Identity = require("../Identity");
@@ -10,6 +9,12 @@ const URI_REGEX = /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z
 const SPACE_REGEX = / +/g;
 
 class Points {
+
+    utils;
+
+    constructor(utils) {
+        this.utils = utils;
+    }
 
     /**
      * Calculates daily points bonus based on streak
@@ -24,14 +29,14 @@ class Points {
                     cancelDate: null,
                 })
                 .sort({transferDate: -1})
-                .limit(config.points.daily.streak.limit);
+                .limit(process.env.POINTS_DAILY_STREAK_LIMIT);
             
             let streak = 0;
             let lastDate = Date.now();
             for (let i = 0; i < logs.length; i++) {
                 const log = logs[i];
 
-                if (lastDate - log.transferDate.getTime() > (24 + config.points.daily.streak.padding_hrs) * HOURS_TO_MILLISECONDS) {
+                if (lastDate - log.transferDate.getTime() > (24 + process.env.POINTS_DAILY_PADDING_HRS) * HOURS_TO_MILLISECONDS) {
                     break;
                 }
 
@@ -39,7 +44,7 @@ class Points {
                 streak++;
             }
 
-            resolve(config.points.daily.streak.step * streak);
+            resolve(process.env.POINTS_DAILY_STREAK_STEP * streak);
         });
     }
 
@@ -72,8 +77,8 @@ class Points {
             if (supporterBonusEnabled &&
                 identity.supporter &&
                 identity.supporter > 0 &&
-                config.points.supporter.length >= identity.supporter) {
-                const multiplier = config.points.supporter[identity.supporter - 1];
+                process.env.POINTS_AD_SUPPORTER_COUNT >= identity.supporter) {
+                const multiplier = process.env[`POINTS_AD_SUPPORTER_${identity.supporter}`];
                 if (multiplier) {
                     bonus += Math.floor((amount + bonus) * multiplier);
                 }
@@ -148,7 +153,7 @@ class Points {
             }
 
             const bonusAmount = await this.#calculateBonus(identity);
-            const log = await this.addPoints(identity, config.points.daily.base, "daily", bonusAmount);
+            const log = await this.addPoints(identity, process.env.POINTS_DAILY_BASE, "daily", bonusAmount);
             resolve(log);
         });
     }
@@ -192,7 +197,7 @@ class Points {
                 identity: identity,
                 reason: "message",
                 transferDate: {
-                    $gt: Date.now() - (config.points.message.cooldown_minutes * 60 * 1000),
+                    $gt: Date.now() - (process.env.POINTS_MESSAGE_COOLDOWN * 60 * 1000),
                 },
                 cancelDate: null,
             });

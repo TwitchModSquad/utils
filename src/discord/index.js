@@ -1,14 +1,17 @@
-const { TextChannel, Message, codeBlock, Guild } = require("discord.js");
+const { TextChannel, Message, Guild } = require("discord.js");
 
-const config = require("../../config.json");
-
-const DiscordMessage = require("./DiscordMessage");
 const DiscordUser = require("./DiscordUser");
 const DiscordUserSchema = require("./DiscordUserSchema");
 
 const Cache = require("../Cache/Cache");
 
 class Discord {
+
+    utils;
+    
+    constructor(utils) {
+        this.utils = utils;
+    }
 
     /**
      * Cache for Discord users
@@ -115,22 +118,20 @@ class Discord {
      * @returns {Promise<null>}
      */
     async init() {
-        this.guilds.tms = await global.client.mbm.guilds.fetch(config.discord.guilds.modsquad);
-        this.guilds.tlms = await global.client.mbm.guilds.fetch(config.discord.guilds.little_modsquad);
-        this.guilds.cl = await global.client.mbm.guilds.fetch(config.discord.guilds.community_lobbies);
+        this.guilds.tms = await global.client.mbm.guilds.fetch(process.env.DISCORD_GUILD_TMS);
+        this.guilds.tlms = await global.client.mbm.guilds.fetch(process.env.DISCORD_GUILD_TLMS);
+        this.guilds.cl = await global.client.mbm.guilds.fetch(process.env.DISCORD_GUILD_CL);
 
-        this.channels.ban.tms = await global.client.mbm.channels.fetch(config.discord.channels.ban.tms);
-        this.channels.ban.tlms = await global.client.mbm.channels.fetch(config.discord.channels.ban.tlms);
-        this.channels.ban.hide = await global.client.mbm.channels.fetch(config.discord.channels.ban.hide);
-        this.channels.live = await global.client.modbot.channels.fetch(config.discord.modbot.channels.live);
+        this.channels.ban.tms = await global.client.mbm.channels.fetch(process.env.DISCORD_CHANNEL_BAN_TMS);
+        this.channels.ban.tlms = await global.client.mbm.channels.fetch(process.env.DISCORD_CHANNEL_BAN_TLMS);
+        this.channels.ban.hide = await global.client.mbm.channels.fetch(process.env.DISCORD_CHANNEL_BAN_HIDE);
+        this.channels.live = await global.client.modbot.channels.fetch(process.env.DISCORD_CHANNEL_LIVE);
 
-        this.channels.archiveRequest = await global.client.mbm.channels.fetch(config.discord.mbm.channels.archive_request);
+        this.channels.archiveRequest = await global.client.mbm.channels.fetch(process.env.DISCORD_CHANNEL_ARCHIVE_REQUEST);
 
-        console.log(
-            `[MB] Using guilds: TMS [${this.guilds.tms.name}] TLMS [${this.guilds.tlms.name}] CL [${this.guilds.cl.name}]\n` +
-            `[MB] Using channel #${this.channels.ban.tms.name} & #${this.channels.ban.tlms.name} for bans, #${this.channels.ban.hide.name} for hidden bans, #${this.channels.live.name} for livestreams, #${this.channels.archiveRequest.name} for archive requests\n` +
-            `[MB] Using message (no messages loaded)`
-        );
+        this.utils.logger.log("info", `Using guilds: TMS [${this.guilds.tms.name}] TLMS [${this.guilds.tlms.name}] CL [${this.guilds.cl.name}]`);
+        this.utils.logger.log("info", `Using channel #${this.channels.ban.tms.name} & #${this.channels.ban.tlms.name} for bans, #${this.channels.ban.hide.name} for hidden bans, #${this.channels.live.name} for livestreams, #${this.channels.archiveRequest.name} for archive requests`);
+        this.utils.logger.log("info", `[MB] Using message (no messages loaded)`);
     }
 
 }

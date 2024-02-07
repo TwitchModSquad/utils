@@ -1,11 +1,37 @@
-const config = require("../config.json");
-
 const MOST_ACTIVE_TIME = 15 * 1000; // 15 seconds
 const MOST_ACTIVE_CHANNEL_COUNT = 15;
 const MAX_FOLLOWERS = 10;
 const MAX_SUBSCRIBERS = 10;
 
 class StatsManager {
+
+    utils;
+
+    constructor(utils) {
+        this.utils = utils;
+
+        let intCount = 0;
+        setInterval(async () => {
+            this.purgeMostActiveChannels();
+            
+            if (intCount % 15 === 0) {
+                this.saveHourlyActivity().catch(err => this.utils.logger.log("error", err));
+                this.updateRecentFollowers().catch(err => this.utils.logger.log("error", err));
+                this.updateRecentSubscribers().catch(err => this.utils.logger.log("error", err));
+                this.updateLiveMembers().catch(err => this.utils.logger.log("error", err));
+            }
+
+            if (intCount % 60 === 0) {
+                this.updateGeneralStatistics().catch(err => this.utils.logger.log("error", err));
+            }
+            intCount++;
+        }, 1000);
+
+        setTimeout(() => {
+            this.loadHourlyActivity().catch(err => this.utils.logger.log("error", err));
+            this.updateLiveMembers().catch(err => this.utils.logger.log("error", err));
+        }, 1000);
+    }
 
     mostActiveChannels = {};
 
@@ -115,11 +141,11 @@ class StatsManager {
             if (this.currentHourlyActivity) this.hourlyActivity.push(this.currentHourlyActivity);
 
             const dateNow = this.#getHourlyDateFormat();
-            const log = await global.utils.Schemas.HourlyStat.findById(dateNow);
+            const log = await this.utils.Schemas.HourlyStat.findById(dateNow);
             if (log) {
                 this.currentHourlyActivity = log;
             } else {
-                this.currentHourlyActivity = await global.utils.Schemas.HourlyStat.create({
+                this.currentHourlyActivity = await this.utils.Schemas.HourlyStat.create({
                     _id: dateNow,
                 });
             }
@@ -135,7 +161,7 @@ class StatsManager {
         if (!this.mostActiveChannels.hasOwnProperty(channelId))
             this.mostActiveChannels[channelId] = {messages: [], bans: [], timeouts: []};
         this.mostActiveChannels[channelId].messages.push(Date.now());
-        this.addHourly("messages").catch(console.error);
+        this.addHourly("messages").catch(err => this.utils.logger.log("error", err));
     }
 
     /**
@@ -146,7 +172,7 @@ class StatsManager {
         if (!this.mostActiveChannels.hasOwnProperty(channelId))
             this.mostActiveChannels[channelId] = {messages: [], bans: [], timeouts: []};
         this.mostActiveChannels[channelId].bans.push(Date.now());
-        this.addHourly("bans").catch(console.error);
+        this.addHourly("bans").catch(err => this.utils.logger.log("error", err));
     }
 
     /**
@@ -157,31 +183,7 @@ class StatsManager {
         if (!this.mostActiveChannels.hasOwnProperty(channelId))
             this.mostActiveChannels[channelId] = {messages: [], bans: [], timeouts: []};
         this.mostActiveChannels[channelId].timeouts.push(Date.now());
-        this.addHourly("timeouts").catch(console.error);
-    }
-
-    constructor() {
-        let intCount = 0;
-        setInterval(async () => {
-            this.purgeMostActiveChannels();
-            
-            if (intCount % 15 === 0) {
-                this.saveHourlyActivity().catch(console.error);
-                this.updateRecentFollowers().catch(console.error);
-                this.updateRecentSubscribers().catch(console.error);
-                this.updateLiveMembers().catch(console.error);
-            }
-
-            if (intCount % 60 === 0) {
-                this.updateGeneralStatistics().catch(console.error);
-            }
-            intCount++;
-        }, 1000);
-
-        setTimeout(() => {
-            this.loadHourlyActivity().catch(console.error);
-            this.updateLiveMembers().catch(console.error);
-        }, 1000);
+        this.addHourly("timeouts").catch(err => this.utils.logger.log("error", err));
     }
 
     /**
@@ -204,7 +206,7 @@ class StatsManager {
      */
     async saveHourlyActivity() {
         if (this.currentHourlyActivity) {
-            await global.utils.Schemas.HourlyStat.findByIdAndUpdate(this.currentHourlyActivity._id, this.currentHourlyActivity);
+            await this.utils.Schemas.HourlyStat.findByIdAndUpdate(this.currentHourlyActivity._id, this.currentHourlyActivity);
         }
     }
 
@@ -212,7 +214,7 @@ class StatsManager {
      * Loads the hourly activity from the database
      */
     async loadHourlyActivity() {
-        this.hourlyActivity = await global.utils.Schemas.HourlyStat.find({})
+        this.hourlyActivity = await this.utils.Schemas.HourlyStat.find({})
             .sort({posted: -1})
             .limit(48);
         this.hourlyActivity.reverse();
@@ -224,9 +226,9 @@ class StatsManager {
      * Updates general statistics
      */
     async updateGeneralStatistics() {
-        this.generalStatistics.messages = await global.utils.Schemas.TwitchChat.estimatedDocumentCount();
-        this.generalStatistics.bans = await global.utils.Schemas.TwitchBan.estimatedDocumentCount();
-        this.generalStatistics.timeouts = await global.utils.Schemas.TwitchTimeout.estimatedDocumentCount();
+        this.generalStatistics.messages = await this.utils.Schemas.TwitchChat.estimatedDocumentCount();
+        this.generalStatistics.bans = await this.utils.Schemas.TwitchBan.estimatedDocumentCount();
+        this.generalStatistics.timeouts = await this.utils.Schemas.TwitchTimeout.estimatedDocumentCount();
 
         const clients = global.client.listen;
         this.generalStatistics.streamers =
@@ -239,12 +241,12 @@ class StatsManager {
      * Updates live members
      */
     async updateLiveMembers() {
-        const streams = await global.utils.Schemas.TwitchLivestream.find({endDate: null, member: true})
+        const streams = await this.utils.Schemas.TwitchLivestream.find({endDate: null, member: true})
             .populate("user");
 
         let activities = [];
         for (let i = 0; i < streams.length; i++) {
-            const activity = await global.utils.Schemas.TwitchStreamStatus.find({live: streams[i]._id})
+            const activity = await this.utils.Schemas.TwitchStreamStatus.find({live: streams[i]._id})
                 .sort({timestamp: -1})
                 .populate("live")
                 .populate("game")
@@ -267,11 +269,11 @@ class StatsManager {
      * Updates recent followers
      */
     async updateRecentFollowers() {
-        const data = await global.utils.Authentication.Twitch.getChannelFollowers(config.twitch.id, MAX_FOLLOWERS);
+        const data = await this.utils.Authentication.Twitch.getChannelFollowers(process.env.TWITCH_BOT_ID, MAX_FOLLOWERS);
         let newFollowList = [];
         for (let i = 0; i < Math.min(MAX_FOLLOWERS - 1, data.data.length); i++) {
             newFollowList.push({
-                user: (await global.utils.Twitch.getUserById(data.data[i].user_id, false, true)).public(),
+                user: (await this.utils.Twitch.getUserById(data.data[i].user_id, false, true)).public(),
                 date: data.data[i].followed_at,
             });
         }
@@ -282,14 +284,14 @@ class StatsManager {
      * Updates recent subscribers
      */
     async updateRecentSubscribers() {
-        const data = await global.utils.Authentication.Twitch.getChannelSubscriptions(config.twitch.id, MAX_SUBSCRIBERS);
+        const data = await this.utils.Authentication.Twitch.getChannelSubscriptions(process.env.TWITCH_BOT_ID, MAX_SUBSCRIBERS);
         let newSubList = [];
         for (let i = 0; i < Math.min(MAX_SUBSCRIBERS - 1, data.data.length); i++) {
             const d = data.data[i];
             newSubList.push({
-                user: (await global.utils.Twitch.getUserById(d.user_id, false, true)).public(),
+                user: (await this.utils.Twitch.getUserById(d.user_id, false, true)).public(),
                 gifter: (d.is_gift ? 
-                    (await global.utils.Twitch.getUserById(d.gifter_id, false, true)).public() : null),
+                    (await this.utils.Twitch.getUserById(d.gifter_id, false, true)).public() : null),
                 tier: Number(d.tier) / 1000,
             });
         }

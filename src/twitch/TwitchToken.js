@@ -4,29 +4,22 @@ const tokenSchema = new mongoose.Schema({
     user: {
         type: String,
         ref: "TwitchUser",
-        required: true,
         index: true,
     },
-    refresh_token: {
-        type: String,
-        required: true,
-    },
-    scope: {
-        type: String,
-        required: true,
-    },
-    created_at: {
-        type: Date,
-        default: Date.now,
-    },
-    last_used: {
-        type: Date,
-        default: Date.now,
+    tokenData: {
+        accessToken: {
+            type: String,
+            required: true,
+        },
+        expiresIn: Number,
+        obtainmentTimestamp: Number,
+        refreshToken: String,
+        scope: [String],
     },
     uses: {
         type: Number,
         default: 0,
-    }
+    },
 });
 
 tokenSchema.methods.use = async function() {

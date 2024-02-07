@@ -1,8 +1,6 @@
 const { EmbedBuilder, codeBlock, cleanCodeBlockContent, StringSelectMenuBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js");
 const mongoose = require("mongoose");
 
-const config = require("../../config.json");
-
 const schema = new mongoose.Schema({
     posted_by: {
         type: String,
@@ -46,7 +44,7 @@ schema.methods.embed = async function() {
             value: users.map((x,i) => `**${i+1}** - [${x.user.display_name}](https://twitch.tv/${x.login})`).join("\n"),
             inline: false,
         }])
-        .setFooter({text: `TMS Group ${this._id}`, iconURL: config.iconURI});
+        .setFooter({text: `TMS Group ${this._id}`, iconURL: process.env.ICON_URI});
 
     if (this.start_time) {
         embed.addFields({
@@ -108,7 +106,7 @@ schema.methods.editComponents = async function() {
 }
 
 schema.methods.updateMessage = async function() {
-    const channel = await global.client.modbot.channels.fetch(config.discord.modbot.channels.group);
+    const channel = await global.client.modbot.channels.fetch(process.env.DISCORD_CHANNEL_GROUP);
     const message = await channel.messages.fetch(this.message);
     message.edit({embeds: [await this.embed()]}).catch(console.error);
 }

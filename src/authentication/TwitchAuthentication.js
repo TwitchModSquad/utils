@@ -1,10 +1,26 @@
+const { ApiClient } = require('@twurple/api');
+
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const config = require("../../config.json");
 
 class TwitchAuthentication {
 
-    TWITCH_URL = `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${config.twitch.client_id}&redirect_uri={redirectURI}&scope={scope}`;
-    TWITCH_REDIRECT = config.express.domain.root + "auth/twitch";
+    utils;
+    
+    /**
+     * @type {ApiClient}
+     */
+    helix;
+
+    TWITCH_URL;
+    TWITCH_REDIRECT;
+
+    constructor(utils, helix) {
+        this.utils = utils;
+        this.helix = helix;
+
+        this.TWITCH_URL = `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${process.env.TWITCH_BOT_CLIENTID}&redirect_uri={redirectURI}&scope={scope}`;
+        this.TWITCH_REDIRECT = process.env.DOMAIN_ROOT + "auth/twitch";
+    }
 
     followerAccessToken = null;
 
@@ -30,8 +46,8 @@ class TwitchAuthentication {
         const oauthResult = await fetch("https://id.twitch.tv/oauth2/token", {
             method: 'POST',
             body: new URLSearchParams({
-                client_id: config.twitch.client_id,
-                client_secret: config.twitch.client_secret,
+                client_id: process.env.TWITCH_BOT_CLIENTID,
+                client_secret: process.env.TWITCH_BOT_CLIENTSECRET,
                 code: code,
                 grant_type: "authorization_code",
                 redirect_uri: redirectURI,
@@ -49,7 +65,7 @@ class TwitchAuthentication {
         const userResult = await fetch('https://api.twitch.tv/helix/users', {
             method: 'GET',
             headers: {
-                ["Client-ID"]: config.twitch.client_id,
+                ["Client-ID"]: process.env.TWITCH_BOT_CLIENTID,
                 Authorization: `Bearer ${accessToken}`,
             },
         });
@@ -103,8 +119,8 @@ class TwitchAuthentication {
             const oauthResult = await fetch("https://id.twitch.tv/oauth2/token", {
                 method: 'POST',
                 body: new URLSearchParams({
-                    client_id: config.twitch.client_id,
-                    client_secret: config.twitch.client_secret,
+                    client_id: process.env.TWITCH_BOT_CLIENTID,
+                    client_secret: process.env.TWITCH_BOT_CLIENTSECRET,
                     refresh_token: refresh_token,
                     grant_type: "refresh_token",
                 }),
@@ -114,7 +130,7 @@ class TwitchAuthentication {
                 if (oauthData?.access_token) {
                     resolve(oauthData.access_token);
                 } else {
-                    console.error(oauthData);
+                    this.utils.logger.log("error", oauthData);
 
                     reject("Unable to request access token, reason: " + oauthData?.message);
                 }
@@ -136,7 +152,7 @@ class TwitchAuthentication {
                 return await fetch("https://api.twitch.tv/helix/"+path+"?first=100&broadcaster_id=" + encodeURIComponent(broadcasterId) + (cursor !== null ? "&after=" + cursor : ""), {
                     method: 'GET',
                     headers: {
-                        ["Client-ID"]: config.twitch.client_id,
+                        ["Client-ID"]: process.env.TWITCH_BOT_CLIENTID,
                         Authorization: `Bearer ${accessToken}`,
                     },
                 });
@@ -211,7 +227,7 @@ class TwitchAuthentication {
                 method: 'POST',
                 headers: {
                     Authorization: "Bearer " + access_token,
-                    "Client-Id": config.twitch.client_id,
+                    "Client-Id": process.env.TWITCH_BOT_CLIENTID,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({data:{user_id: user_id, reason: reason}}),
@@ -247,7 +263,7 @@ class TwitchAuthentication {
                 return await fetch("https://api.twitch.tv/helix/moderation/banned?first=100&broadcaster_id=" + encodeURIComponent(broadcasterId) + (cursor !== null ? "&after=" + cursor : ""), {
                     method: 'GET',
                     headers: {
-                        ["Client-ID"]: config.twitch.client_id,
+                        ["Client-ID"]: process.env.TWITCH_BOT_CLIENTID,
                         Authorization: `Bearer ${accessToken}`,
                     },
                 });
@@ -292,7 +308,7 @@ class TwitchAuthentication {
                 return await fetch(`https://api.twitch.tv/helix/moderation/banned?first=100&broadcaster_id=${encodeURIComponent(broadcasterId)}&user_id=${encodeURIComponent(chatterId)}`, {
                     method: 'GET',
                     headers: {
-                        ["Client-ID"]: config.twitch.client_id,
+                        ["Client-ID"]: process.env.TWITCH_BOT_CLIENTID,
                         Authorization: `Bearer ${accessToken}`,
                     },
                 });
@@ -321,20 +337,6 @@ class TwitchAuthentication {
     }
 
     /**
-     * Retrieves the follower access token and stores it
-     * @returns {Promise<string>}
-     */
-    #retrieveFollowerAccessToken() {
-        return new Promise(async (resolve, reject) => {
-            this.getAccessToken(config.twitch.follow_refresh).then(token => {
-                this.followerAccessToken = token;
-                resolve(token);
-            }, reject);
-
-        })
-    }
-
-    /**
      * Gets a channels followers
      * @param {string} broadcasterId 
      * @param {number} limit
@@ -343,45 +345,7 @@ class TwitchAuthentication {
      */
     getChannelFollowers(broadcasterId, limit = 1, retry = true) {
         return new Promise(async (resolve, reject) => {
-            try {
-                if (!this.followerAccessToken) await this.#retrieveFollowerAccessToken();
-            } catch(err) {
-                console.error("Unable to retrieve follower access token");
-                console.error(err);
-                reject(err);
-                return;
-            }
-
-            const oauthResult = await fetch(`https://api.twitch.tv/helix/channels/followers?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=${encodeURIComponent(limit)}`, {
-                method: 'GET',
-                headers: {
-                    ["Client-ID"]: config.twitch.client_id,
-                    Authorization: `Bearer ${this.followerAccessToken}`,
-                },
-            });
-
-            const json = await oauthResult.json();
-            if (oauthResult.status === 200) {
-                resolve(json);
-            } else {
-                try {
-                    if (json?.message) {
-                        if (json.message.toLowerCase() === "invalid oauth token") {
-                            console.error(`Failed to get followers for ${broadcasterId}: Invalid oauth`);
-                            if (retry) {
-                                this.followerAccessToken = null;
-                                this.getChannelFollowers(broadcasterId, limit, false).then(resolve, reject);
-                            } else {
-                                reject(json.message);
-                            }
-                        }
-                    } else {
-                        reject(oauthResult.statusText);
-                    }
-                } catch(err) {
-                    reject(err);
-                }
-            }
+            this.helix.channels.getChannelFollowers(broadcasterId).then(e => {console.log(e);resolve(e)}, reject);
         });
     }
 
@@ -394,45 +358,7 @@ class TwitchAuthentication {
      */
     getChannelSubscriptions(broadcasterId, limit = 20, retry = true) {
         return new Promise(async (resolve, reject) => {
-            try {
-                if (!this.followerAccessToken) await this.#retrieveFollowerAccessToken();
-            } catch(err) {
-                console.error("Unable to retrieve follower access token");
-                console.error(err);
-                reject(err);
-                return;
-            }
-
-            const oauthResult = await fetch(`https://api.twitch.tv/helix/subscriptions?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=${encodeURIComponent(limit)}`, {
-                method: 'GET',
-                headers: {
-                    ["Client-ID"]: config.twitch.client_id,
-                    Authorization: `Bearer ${this.followerAccessToken}`,
-                },
-            });
-
-            const json = await oauthResult.json();
-            if (oauthResult.status === 200) {
-                resolve(json);
-            } else {
-                try {
-                    if (json?.message) {
-                        if (json.message.toLowerCase() === "invalid oauth token") {
-                            console.error(`Failed to get subscribers for ${broadcasterId}: Invalid oauth`);
-                            if (retry) {
-                                this.followerAccessToken = null;
-                                this.getChannelSubscriptions(broadcasterId, limit, false).then(resolve, reject);
-                            } else {
-                                reject(json.message);
-                            }
-                        }
-                    } else {
-                        reject(oauthResult.statusText);
-                    }
-                } catch(err) {
-                    reject(err);
-                }
-            }
+            resolve([])
         });
     }
 
@@ -447,7 +373,7 @@ class TwitchAuthentication {
             const result = await fetch(`https://api.twitch.tv/helix/moderation/channels?user_id=${userId}&first=100${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`, {
                 method: 'GET',
                 headers: {
-                    ["Client-ID"]: config.twitch.client_id,
+                    ["Client-ID"]: process.env.TWITCH_BOT_CLIENTID,
                     Authorization: `Bearer ${accessToken}`,
                 },
             });
