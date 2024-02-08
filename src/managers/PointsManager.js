@@ -50,8 +50,8 @@ class Points {
      * @param {Promise<any>} identity 
      */
     async #refreshIdentity(identity) {
-        global.utils.Discord.userCache.removeIdentity(identity._id);
-        global.utils.Twitch.userCache.removeIdentity(identity._id);
+        global.utils.Managers.Discord.userCache.removeIdentity(identity._id);
+        global.utils.Managers.Twitch.userCache.removeIdentity(identity._id);
         // return await Identity.findById(identity._id);
         return identity;
     }
