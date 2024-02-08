@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { StringSelectMenuBuilder } = require("discord.js");
 const {createLogger, Logger, format, transports} = require("winston");
+const { combine, timestamp, prettyPrint, colorize, errors } = format;
 
 const Authentication = require("./authentication/");
 const Managers = require("./managers/");
@@ -14,6 +15,11 @@ class Utils {
      */
     logger = createLogger({
         level: "info",
+        format: combine(
+                errors({ stack: true }),
+                colorize(),
+                prettyPrint()
+            ),
         transports: [
             new transports.Console({
                 format: format.combine(
@@ -21,7 +27,8 @@ class Utils {
                     format.simple()
                 )
             })
-        ]
+        ],
+        defaultMeta: {service:"utils"},
     });
 
     /**
@@ -38,6 +45,7 @@ class Utils {
     #registerManagers(utils) {
         this.logger.log("info","Registering managers...");
         this.Managers = new Managers(utils);
+        this.Authentication = new Authentication(utils);
         this.logger.log("info","Managers registered!");
     }
 
