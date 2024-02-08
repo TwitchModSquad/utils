@@ -14,9 +14,9 @@ class TwitchAuthentication {
     TWITCH_URL;
     TWITCH_REDIRECT;
 
-    constructor(utils, helix) {
+    constructor(utils) {
         this.utils = utils;
-        this.helix = helix;
+        this.helix = utils.Managers.Twitch.Helix;
 
         this.TWITCH_URL = `https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${process.env.TWITCH_BOT_CLIENTID}&redirect_uri={redirectURI}&scope={scope}`;
         this.TWITCH_REDIRECT = process.env.DOMAIN_ROOT + "auth/twitch";
@@ -166,7 +166,7 @@ class TwitchAuthentication {
                     for (let i = 0; i < json.data.length; i++) {
                         result = [
                             ...result,
-                            await global.api.Twitch.getUserById(json.data[i].user_id, false, true)
+                            await this.utils.Managers.Twitch.getUserById(json.data[i].user_id, false, true)
                         ]
                     }
 
@@ -277,7 +277,7 @@ class TwitchAuthentication {
                     for (let i = 0; i < json.data.length; i++) {
                         result = [
                             ...result,
-                            await global.utils.Twitch.getUserById(json.data[i].user_id, false, true)
+                            await this.utils.Managers.Twitch.getUserById(json.data[i].user_id, false, true)
                         ]
                     }
 
@@ -345,7 +345,7 @@ class TwitchAuthentication {
      */
     getChannelFollowers(broadcasterId, limit = 1, retry = true) {
         return new Promise(async (resolve, reject) => {
-            this.helix.channels.getChannelFollowers(broadcasterId).then(e => {console.log(e);resolve(e)}, reject);
+            this.helix.channels.getChannelFollowers(broadcasterId).then(e => {resolve(e)}, reject);
         });
     }
 
