@@ -8,6 +8,7 @@ const authProvider = new RefreshingAuthProvider({
     clientSecret: process.env.TWITCH_BOT_CLIENTSECRET,
     redirectUri: process.env.DOMAIN_ROOT + "auth/twitch",
 });
+
 const api = new ApiClient({ authProvider });
 
 class Twitch {
@@ -41,14 +42,6 @@ class Twitch {
             
             authProvider.addIntentsToUser(process.env.TWITCH_BOT_ID, ["chat"]);
         })();
-
-        setInterval(async () => {
-            try {
-                await this.getUserByIdTick()
-            } catch(e) {
-                this.utils.logger.log("error", e);
-            }
-        }, 500);
     }
 
     /**
@@ -140,11 +133,31 @@ class Twitch {
      */
     getUserByIdByForce(id) {
         return new Promise(async (resolve, reject) => {
-            this.forceCache.push({
-                id: id,
-                resolve: resolve,
-                reject: reject,
-            });
+            const user = await this.Helix.users.getUserByIdBatched(id);
+
+            try {
+                const dbUser = await this.utils.Schemas.TwitchUser.findOneAndUpdate(
+                    {
+                        _id: user.id
+                    }, {
+                        _id: user.id,
+                        login: user.name,
+                        display_name: user.displayName,
+                        type: user.type,
+                        broadcaster_type: user.broadcasterType,
+                        description: user.description,
+                        profile_image_url: user.profilePictureUrl,
+                        offline_image_url: user.offlinePlaceholderUrl,
+                        created_at: user.creationDate,
+                    }, {
+                        upsert: true,
+                        new: true,
+                    }
+                );
+                resolve(dbUser);
+            } catch(e) {
+                reject(e);
+            }
         });
     }
 
