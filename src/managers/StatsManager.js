@@ -229,12 +229,6 @@ class StatsManager {
         this.generalStatistics.messages = await this.utils.Schemas.TwitchChat.estimatedDocumentCount();
         this.generalStatistics.bans = await this.utils.Schemas.TwitchBan.estimatedDocumentCount();
         this.generalStatistics.timeouts = await this.utils.Schemas.TwitchTimeout.estimatedDocumentCount();
-
-        const clients = global.client.listen;
-        this.generalStatistics.streamers =
-                clients.member.channels.length +
-                clients.partner.channels.length +
-                clients.affiliate.channels.length;
     }
 
     /**
@@ -273,7 +267,7 @@ class StatsManager {
         let newFollowList = [];
         for (let i = 0; i < Math.min(MAX_FOLLOWERS - 1, data.data.length); i++) {
             newFollowList.push({
-                user: (await this.utils.Twitch.getUserById(data.data[i].user_id, false, true)).public(),
+                user: (await this.utils.Managers.Twitch.getUserById(data.data[i].user_id, false, true)).public(),
                 date: data.data[i].followed_at,
             });
         }
@@ -285,13 +279,14 @@ class StatsManager {
      */
     async updateRecentSubscribers() {
         const data = await this.utils.Authentication.Twitch.getChannelSubscriptions(process.env.TWITCH_BOT_ID, MAX_SUBSCRIBERS);
+        console.log(data);
         let newSubList = [];
         for (let i = 0; i < Math.min(MAX_SUBSCRIBERS - 1, data.data.length); i++) {
             const d = data.data[i];
             newSubList.push({
-                user: (await this.utils.Twitch.getUserById(d.user_id, false, true)).public(),
+                user: (await this.utils.Managers.Twitch.getUserById(d.user_id, false, true)).public(),
                 gifter: (d.is_gift ? 
-                    (await this.utils.Twitch.getUserById(d.gifter_id, false, true)).public() : null),
+                    (await this.utils.Managers.Twitch.getUserById(d.gifter_id, false, true)).public() : null),
                 tier: Number(d.tier) / 1000,
             });
         }
