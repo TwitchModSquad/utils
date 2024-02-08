@@ -229,7 +229,7 @@ module.exports = function(utils) {
     }
     
     schema.methods.updateData = async function() {
-        const helixUser = await global.utils.Twitch.Helix.helix.users.getUserById(this._id);
+        const helixUser = await utils.Managers.Twitch.Helix.helix.users.getUserById(this._id);
         this.login = helixUser.name;
         this.display_name = helixUser.displayName;
         this.type = helixUser.type;
@@ -354,7 +354,7 @@ module.exports = function(utils) {
         for (let i = 0; i < channels.length; i++) {
             const channel = channels[i];
             try {
-                const streamer = await global.utils.Twitch.getUserById(channel.broadcaster_id, false, true);
+                const streamer = await utils.Managers.Twitch.getUserById(channel.broadcaster_id, false, true);
                 await utils.Schemas.TwitchRole.findOneAndUpdate({
                     streamer, moderator: this,
                 }, {
@@ -381,9 +381,9 @@ module.exports = function(utils) {
     
                 for (let i = 0; i < bans.length; i++) {
                     const ban = bans[i];
-                    const streamer = await global.utils.Twitch.getUserById(ban.streamer_id, false, true);
-                    const chatter = await global.utils.Twitch.getUserById(ban.user_id, false, true);
-                    const moderator = ban.moderator_id ? await global.utils.Twitch.getUserById(ban.moderator_id, false, true) : null;
+                    const streamer = await utils.Managers.Twitch.getUserById(ban.streamer_id, false, true);
+                    const chatter = await utils.Managers.Twitch.getUserById(ban.user_id, false, true);
+                    const moderator = ban.moderator_id ? await utils.Managers.Twitch.getUserById(ban.moderator_id, false, true) : null;
     
                     await utils.Schemas.TwitchBan.findOneAndUpdate({
                         migrate_id: ban.id,
@@ -406,8 +406,8 @@ module.exports = function(utils) {
     
                     for (let t = 0; t < tos.length; t++) {
                         const to = tos[t];
-                        const streamer = await global.utils.Twitch.getUserById(to.streamer_id, false, true);
-                        const chatter = await global.utils.Twitch.getUserById(to.user_id, false, true);
+                        const streamer = await utils.Managers.Twitch.getUserById(to.streamer_id, false, true);
+                        const chatter = await utils.Managers.Twitch.getUserById(to.user_id, false, true);
     
                         await utils.Schemas.TwitchTimeout.findOneAndUpdate({
                             migrate_id: to.id,
@@ -427,7 +427,7 @@ module.exports = function(utils) {
                     if (!this.migrated) {
                         migrating = true;
                         const start = Date.now();
-                        console.log(`Now migrating chat logs from ${this.display_name}`);
+                        utils.logger.log("info", `Now migrating chat logs from ${this.display_name}`);
                         con.query("select id, streamer_id, user_id, message, deleted, color, emotes, badges, timesent from twitch__chat where user_id = ? order by timesent desc limit 25000;", [this._id], async (err3, chats) => {
                             if (err3) {
                                 migrating = false;
@@ -435,12 +435,12 @@ module.exports = function(utils) {
                                 return;
                             }
     
-                            console.log(`Received ${chats.length} chat messages from ${this.display_name} at ${Date.now() - start} ms`);
+                            utils.logger.log("info", `Received ${chats.length} chat messages from ${this.display_name} at ${Date.now() - start} ms`);
                             for (let c = 0; c < chats.length; c++) {
                                 const chat = chats[c];
                                 try {
-                                    const streamer = await global.utils.Twitch.getUserById(chat.streamer_id, false, true);
-                                    const chatter = await global.utils.Twitch.getUserById(chat.user_id, false, true);
+                                    const streamer = await utils.Managers.Twitch.getUserById(chat.streamer_id, false, true);
+                                    const chatter = await utils.Managers.Twitch.getUserById(chat.user_id, false, true);
                                     await utils.Schemas.TwitchChat.findOneAndUpdate({
                                         _id: chat.id,
                                     }, {
@@ -461,7 +461,7 @@ module.exports = function(utils) {
                                     console.error(e);
                                 }
                             }
-                            console.log(`Completed migration for ${this.display_name} in ${Date.now() - start} ms!`);
+                            utils.logger.log("info", `Completed migration for ${this.display_name} in ${Date.now() - start} ms!`);
                             migrating = false;
                         });
                     }
