@@ -12,7 +12,7 @@ describe("getUserById", () => {
         ];
 
         for (let i = 0; i < ids.length; i++) {
-            const data = await utils.Managers.Discord.getUserById(ids[i]);
+            const data = await utils.Managers.Discord.getUserById(ids[i], false, true);
 
             for (let p = 0; p < properties.length; p++) {
                 expect(data).toHaveProperty(properties[p]);
