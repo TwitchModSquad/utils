@@ -15,6 +15,8 @@ class Twitch {
 
     utils;
 
+    authProvider = authProvider;
+
     constructor(utils) {
         this.utils = utils;
 
